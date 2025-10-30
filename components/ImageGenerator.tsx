@@ -8,6 +8,7 @@ import SpinnerIcon from './icons/SpinnerIcon';
 import EditIcon from './icons/EditIcon';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import ChevronRightIcon from './icons/ChevronRightIcon';
+import RecallIcon from './icons/RecallIcon';
 
 const aspectRatios: AspectRatio[] = ["1:1", "16:9", "9:16", "4:3", "3:4"];
 const imagenModels: ImagenModel[] = ['imagen-3.0-generate-002', 'imagen-4.0-generate-001', 'imagen-4.0-ultra-generate-001', 'imagen-4.0-fast-generate-001'];
@@ -90,6 +91,16 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ conversationId, onSessi
     resultsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history]);
 
+  const handleRecallPrompt = (event: GenerationEvent) => {
+    setPrompt(event.prompt);
+    const p = event.parameters;
+    setAspectRatio(p.aspectRatio);
+    setModel(p.model);
+    setNumberOfImages(p.numberOfImages);
+    setOutputMimeType(p.outputMimeType || 'image/png');
+    setIsSettingsPanelOpen(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
@@ -169,7 +180,17 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ conversationId, onSessi
         <div className="flex-grow w-full h-full space-y-6">
             {history.map((event, eventIndex) => (
                 <div key={event.timestamp}>
-                    <p className="font-semibold text-text-secondary mb-2">Prompt: <span className="text-text-primary italic">"{event.prompt}"</span></p>
+                    <div className="flex items-center gap-2 mb-2">
+                        <p className="font-semibold text-text-secondary">Prompt: <span className="text-text-primary italic">"{event.prompt}"</span></p>
+                        <button
+                            onClick={() => handleRecallPrompt(event)}
+                            className="text-text-secondary hover:text-text-primary p-1 rounded-full hover:bg-border-color"
+                            aria-label="Recall this prompt and its settings"
+                            title="Recall this prompt and its settings"
+                        >
+                            <RecallIcon className="w-4 h-4" />
+                        </button>
+                    </div>
                     <div className={`grid grid-cols-${gridCols} gap-4`}>
                         {event.generatedImages.map((image, imgIndex) => (
                             <div key={imgIndex} className="relative group aspect-square">

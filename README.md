@@ -33,10 +33,10 @@ The application serves as a creative partner, enabling users to brainstorm ideas
 
 ### e. Customizable User Interface
 - **Modern Design:** A clean, responsive interface built with Tailwind CSS.
-- **Theme Engine:**
-    - **Predefined Themes:** Switch between Dark, Light, and High-Contrast modes.
-    - **Custom Themes:** Create and save a personal color palette for a unique look and feel.
-- **Persistent Settings:** The chosen theme is saved locally, personalizing the experience across sessions.
+- **Theme Selection:** Choose from multiple themes.
+- **Unified History:** Access the complete chat and image history within the app.
+- **Dynamic Sizing:** Images and editor thumbnails automatically adjust size for optimal display.
+- **Retractable Panels:** Hide or reveal the settings and history panels with a single click to maximize the working space.
 
 ## 3. Technical Architecture
 - **Frontend:** Built with **React** and **TypeScript** for a robust and type-safe user interface.

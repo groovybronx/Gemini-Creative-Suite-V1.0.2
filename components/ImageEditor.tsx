@@ -6,6 +6,7 @@ import type { ImageEditingConversation, EditEvent } from '../types';
 import SpinnerIcon from './icons/SpinnerIcon';
 import ChevronLeftIcon from './icons/ChevronLeftIcon';
 import ChevronRightIcon from './icons/ChevronRightIcon';
+import RecallIcon from './icons/RecallIcon';
 
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -35,6 +36,7 @@ interface ImageEditorProps {
 const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCreated, onViewImage }) => {
   const [baseImage, setBaseImage] = useState<{ url: string; base64: string; mimeType: string; } | null>(null);
   const [history, setHistory] = useState<EditEvent[]>([]);
+  const [activeHistoryIndex, setActiveHistoryIndex] = useState<number>(-1); // -1 for base image
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState<{ analysis: boolean; edit: boolean }>({ analysis: false, edit: false });
@@ -50,14 +52,17 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
         const convo = await dbService.getConversation(conversationId);
         if (convo && convo.type === 'imageEditing') {
           setBaseImage(convo.baseImage);
-          setHistory(convo.history || []);
+          const loadedHistory = convo.history || [];
+          setHistory(loadedHistory);
+          setActiveHistoryIndex(loadedHistory.length - 1); // Set active to the latest image
           setAnalysisResult(convo.analysisResult);
-          setPrompt(''); // Prompt is transient
+          setPrompt('');
         }
       } else {
         // Reset for new session
         setBaseImage(null);
         setHistory([]);
+        setActiveHistoryIndex(-1);
         setAnalysisResult(null);
         setPrompt('');
       }
@@ -107,6 +112,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
       };
       setBaseImage(newBaseImage);
       setHistory([]);
+      setActiveHistoryIndex(-1);
       setAnalysisResult(null);
       setPrompt('');
       
@@ -126,11 +132,14 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
   };
 
   const handleEdit = async () => {
-    const sourceImage = history.length > 0 ? history[history.length - 1].editedImage : baseImage;
+    const sourceImage = activeHistoryIndex === -1 ? baseImage : history[activeHistoryIndex]?.editedImage;
     if (!sourceImage || !prompt.trim()) return;
 
     setIsLoading({ ...isLoading, edit: true });
     
+    // If editing from a past point, truncate the history to create a new branch
+    const newHistoryBase = history.slice(0, activeHistoryIndex + 1);
+
     const resultUrl = await geminiService.editImage(sourceImage.base64, sourceImage.mimeType, prompt);
     
     if(resultUrl) {
@@ -145,8 +154,9 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
                 },
                 timestamp: Date.now()
             };
-            const newHistory = [...history, newEvent];
+            const newHistory = [...newHistoryBase, newEvent];
             setHistory(newHistory);
+            setActiveHistoryIndex(newHistory.length - 1); // Set new image as active
             await saveSession({ history: newHistory, analysisResult });
         }
     }
@@ -155,7 +165,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
     setIsLoading({ ...isLoading, edit: false });
   };
   
-  const displayImage = history.length > 0 ? history[history.length-1].editedImage.url : baseImage?.url;
+  const displayImage = activeHistoryIndex === -1 ? baseImage?.url : history[activeHistoryIndex]?.editedImage.url;
 
   return (
     <div className="bg-component-bg rounded-lg border border-border-color h-full flex flex-col overflow-hidden">
@@ -227,7 +237,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
                                     <div className="bg-component-bg p-3 rounded-lg text-sm whitespace-pre-wrap">{analysisResult}</div>
                                 </div>
                             )}
-                            {history.length > 0 && (
+                            {(baseImage || history.length > 0) && (
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
                                         <h3 className="font-semibold text-text-secondary">Edit History:</h3>
@@ -237,10 +247,30 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ conversationId, onSessionCrea
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        {history.map(event => (
-                                            <div key={event.timestamp} className="bg-component-bg p-2 rounded-lg flex items-start gap-3">
+                                        {/* Original Image */}
+                                        <div 
+                                            onClick={() => setActiveHistoryIndex(-1)}
+                                            className={`bg-component-bg p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-all ${activeHistoryIndex === -1 ? 'ring-2 ring-accent-yellow' : 'hover:bg-border-color'}`}>
+                                            <img src={baseImage.url} alt="Original" className="object-contain rounded-md flex-shrink-0 bg-black/20" style={{width: `${thumbnailSize}rem`, height: `${thumbnailSize}rem`}}/>
+                                            <p className="text-sm italic text-text-secondary flex-grow">Original Image</p>
+                                        </div>
+                                        {/* Edit History */}
+                                        {history.map((event, index) => (
+                                            <div 
+                                                key={event.timestamp} 
+                                                onClick={() => setActiveHistoryIndex(index)}
+                                                className={`bg-component-bg p-2 rounded-lg flex items-center gap-3 cursor-pointer transition-all ${activeHistoryIndex === index ? 'ring-2 ring-accent-yellow' : 'hover:bg-border-color'}`}
+                                            >
                                                 <img src={event.editedImage.url} alt="Edit result" className="object-contain rounded-md flex-shrink-0 bg-black/20" style={{width: `${thumbnailSize}rem`, height: `${thumbnailSize}rem`}}/>
-                                                <p className="text-sm italic text-text-primary self-center">"{event.prompt}"</p>
+                                                <p className="text-sm italic text-text-primary flex-grow">"{event.prompt}"</p>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setPrompt(event.prompt); }}
+                                                    className="text-text-secondary hover:text-text-primary p-1 rounded-full hover:bg-border-color flex-shrink-0"
+                                                    aria-label="Recall this prompt"
+                                                    title="Recall this prompt"
+                                                >
+                                                    <RecallIcon className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

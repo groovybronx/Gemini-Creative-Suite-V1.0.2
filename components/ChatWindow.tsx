@@ -4,6 +4,7 @@ import { Author } from '../types';
 import { geminiService } from '../services/geminiService';
 import { dbService } from '../services/dbService';
 import SpinnerIcon from './icons/SpinnerIcon';
+import RecallIcon from './icons/RecallIcon';
 
 interface ChatWindowProps {
   conversationId: string | null;
@@ -135,19 +136,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ conversationId, onConversationC
             {msg.author === Author.MODEL && (
               <div className="w-8 h-8 rounded-full bg-accent-khaki flex-shrink-0"></div>
             )}
-            <div
-              className={`max-w-xl p-3 rounded-lg shadow-md ${
-                msg.author === Author.USER
-                  ? 'bg-accent-yellow text-gray-900'
-                  : 'bg-base-bg text-text-primary'
-              }`}
-            >
-              {typeof msg.content === 'string' ? (
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              ) : (
-                msg.content
-              )}
-            </div>
+            
+            {msg.author === Author.USER ? (
+                <div className="relative group">
+                    <div className="max-w-xl p-3 rounded-lg shadow-md bg-accent-yellow text-gray-900">
+                        {typeof msg.content === 'string' ? <p className="whitespace-pre-wrap">{msg.content}</p> : msg.content}
+                    </div>
+                    <button
+                        onClick={() => typeof msg.content === 'string' && setInput(msg.content)}
+                        className="absolute top-1/2 -translate-y-1/2 left-0 -translate-x-full p-1 rounded-full text-text-secondary hover:bg-border-color opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Recall this message"
+                        title="Recall this message"
+                    >
+                        <RecallIcon className="w-4 h-4" />
+                    </button>
+                </div>
+            ) : (
+                <div className="max-w-xl p-3 rounded-lg shadow-md bg-base-bg text-text-primary">
+                    {typeof msg.content === 'string' ? <p className="whitespace-pre-wrap">{msg.content}</p> : msg.content}
+                </div>
+            )}
           </div>
         ))}
         {isLoading && (
