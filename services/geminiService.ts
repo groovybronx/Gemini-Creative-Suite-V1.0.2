@@ -2,11 +2,11 @@ import { GoogleGenAI, Modality, type Content } from "@google/genai";
 // Fix: Import Author as a value, not just a type, because it is used at runtime.
 import { Author, type GenerationEvent, type ChatMessage, type GeminiChatModel } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable is not set");
+if (!import.meta.env.VITE_API_KEY) {
+  throw new Error("VITE_API_KEY environment variable is not set");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
 
 export const geminiService = {
   getChatResponse: async (messages: ChatMessage[], model: GeminiChatModel): Promise<string> => {
