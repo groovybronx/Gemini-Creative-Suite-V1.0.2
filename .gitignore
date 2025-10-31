@@ -28,4 +28,5 @@ package-lock.json
 .env.local
 
 .specstory
+release
 
